@@ -182,6 +182,12 @@ class Datapath(object):
             priority, buffer_id, out_port, flags, actions)
         self.send_msg(flow_mod)
 
+    def send_flow_del(self, match, cookie, out_port=None):
+        self.send_flow_mod(match=match, cookie=cookie,
+                           command=self.ofproto.OFPFC_DELETE,
+                           idle_timeout=0, hard_timeout=0, priority=0,
+                           out_port=out_port)
+
     def send_delete_all_flows(self):
         addr = haddr_to_bin('00:00:00:00:00:00')
         match = self.ofproto_parser.OFPMatch(self.ofproto.OFPFW_ALL,
