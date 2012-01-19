@@ -155,6 +155,20 @@ class OFPMatch(collections.namedtuple('OFPMatchBase', (
             'dl_vlan_pcp', 'dl_type', 'nw_tos', 'nw_proto',
             'nw_src', 'nw_dst', 'tp_src', 'tp_dst'))):
 
+    _dl_none = '\x00' * 6
+
+    def __new__(cls, *args):
+        # for convenience when dl_src/dl_dst are wildcard
+        if args[2] != 0 and args[3] != 0:
+            return super(cls, OFPMatch).__new__(cls, *args)
+
+        tmp = list(args)
+        if tmp[2] == 0:
+            tmp[2] = cls._dl_none
+        if tmp[3] == 0:
+            tmp[3] = cls._dl_none
+        return super(cls, OFPMatch).__new__(cls, *tmp)
+
     def serialize(self, buf, offset):
         _pack_into(ofproto_v1_0.OFP_MATCH_PACK_STR, buf, offset, *self)
 
