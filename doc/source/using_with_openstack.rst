@@ -110,7 +110,8 @@ from the source, please refer to OpenStack document and get back here again.
        * --network_size=<setup here>
        * --network_manager=nova.network.quantum.manager.QuantumManager
        * --quantum_connection_host=<quantume server ip address>
-       * --firewall_driver=nova.virt.libvirt.firewall.NopFirewallDriver
+       * --firewall_driver=quantum.plugins.openvswitch.ryu.nova.firewall.NopFirewallDriver
+       * --quantum_use_dhcp
 
         NOP firewall driver is newly introduced for demonstrating Ryu
         capability.
@@ -119,7 +120,8 @@ from the source, please refer to OpenStack document and get back here again.
         because ryu directly controls packets to VM instance via OVS bypassing
         netfilter/iptables.
 
-       * --linuxnet_interface_driver=nova.network.linux_net.LinuxOVSOFInterfaceDriver
+       * --linuxnet_interface_driver=quantum.plugins.openvswitch.ryu.nova.linux_net.LinuxOVSRyuInterfaceDriver
+       * --linuxnet_ovs_ryu_api_host=<IP address of ryu server>:<Ryu rest API port>
     * set up OVS on each nova-compute node
 
       If Ubuntu is used, you can install it from packages as
@@ -140,7 +142,8 @@ from the source, please refer to OpenStack document and get back here again.
        * --libvirt_type=kvm
        * --libvirt_ovs_integration_bridge=<OVS bridge:br-int>
        * --libvirt_vif_type=ethernet
-       * --libvirt_vif_driver=nova.virt.libvirt.vif.LibvirtOpenVswitchDriver
+       * --libvirt_vif_driver=quantum.plugins.openvswitch.ryu.nova.vif.LibvirtOpenVswitchOFPRyuDriver
+       * --libvirt_ovs_ryu_api_host=<IP address of ryu server>:<Ryu rest API port>
 
 * install quantum server and have quantum to use OVS pluging
    * Edit [PLUGIN] section of /etc/quantum/plugins.ini
@@ -151,7 +154,7 @@ from the source, please refer to OpenStack document and get back here again.
      
      In addition to normal quantum OVS settings, add the followings.
       * integration-bridge = <OVS bridge name: br-int>
-      * plugin_driver = quantum.plugins.openvswitch.ovs_quantum_plugin.OFPRyuDriver
+      * plugin_driver = quantum.plugins.openvswitch.ryu.plugin_driver.OFPRyuDriver
       * agent_driver = OVSQuantumOFPRyuAgent
       * openflow-controller = <ryu-manager IP address>:<ryu openflow port: default 6633>
       * openflow-rest-api = <ryu-manager IP address>:<RYU reset API port: default 8080>
