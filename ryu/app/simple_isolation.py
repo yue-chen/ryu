@@ -22,9 +22,9 @@ from ryu.exception import PortUnknown
 from ryu.controller import event
 from ryu.controller import mac_to_network
 from ryu.controller import mac_to_port
-from ryu.controller.dpset import dpset
-from ryu.controller.handler import main_dispatcher
-from ryu.controller.handler import config_dispatcher
+from ryu.controller.dpset import DPSET
+from ryu.controller.handler import MAIN_DISPATCHER
+from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.lib.mac import haddr_to_str
 from ryu.lib import mac
@@ -34,21 +34,22 @@ LOG = logging.getLogger('ryu.app.simple_isolation')
 
 
 class SimpleIsolation(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *_args, **kwargs):
         self.nw = kwargs['network']
         self.mac2port = mac_to_port.MacToPortTable()
         self.mac2net = mac_to_network.MacToNetwork(self.nw)
 
-    @set_ev_cls(event.EventOFPSwitchFeatures, config_dispatcher)
+    @set_ev_cls(event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         self.mac2port.dpid_add(ev.msg.datapath_id)
         self.nw.add_datapath(ev.msg)
 
     @set_ev_cls(event.EventOFPBarrierReply)
-    def barrier_reply_handler(ev):
+    def barrier_reply_handler(self, ev):
         LOG.debug('barrier reply ev %s msg %s', ev, ev.msg)
 
-    def _modflow_and_send_packet(self, msg, src, dst, actions):
+    @staticmethod
+    def _modflow_and_send_packet(msg, src, dst, actions):
         datapath = msg.datapath
 
         #
@@ -112,13 +113,13 @@ class SimpleIsolation(object):
     def _drop_packet(self, msg, src, dst):
         self._modflow_and_send_packet(msg, src, dst, [])
 
-    @set_ev_cls(event.EventOFPPacketIn, main_dispatcher)
+    @set_ev_cls(event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in_handler(self, ev):
         # LOG.debug('packet in ev %s msg %s', ev, ev.msg)
         msg = ev.msg
         datapath = msg.datapath
 
-        dst, src, eth_type = struct.unpack_from('!6s6sH', buffer(msg.data), 0)
+        dst, src, _eth_type = struct.unpack_from('!6s6sH', buffer(msg.data), 0)
 
         try:
             port_nw_id = self.nw.get_network(datapath.id, msg.in_port)
@@ -165,7 +166,7 @@ class SimpleIsolation(object):
         dst_nw_id = self.mac2net.get_network(dst, NW_ID_UNKNOWN)
 
         # we handle multicast packet as same as broadcast
-        broadcast = (dst == mac.broadcast) or mac.is_multicast(dst)
+        broadcast = (dst == mac.BROADCAST) or mac.is_multicast(dst)
         out_port = self.mac2port.port_get(datapath.id, dst)
 
         #
@@ -295,34 +296,34 @@ class SimpleIsolation(object):
                 datapath.send_barrier()
                 return
 
-        for mac in self.mac2port.mac_list(datapath_id, port_no):
-            for dp in dpset.get_all():
-                if self.mac2port.port_get(dp.id, mac) is None:
+        for mac_ in self.mac2port.mac_list(datapath_id, port_no):
+            for dp in DPSET.get_all():
+                if self.mac2port.port_get(dp.id, mac_) is None:
                     continue
 
                 wildcards = dp.ofproto.OFPFW_ALL
                 wildcards &= ~dp.ofproto.OFPFW_DL_SRC
                 match = dp.ofproto_parser.OFPMatch(
-                    wildcards, 0, mac, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                    wildcards, 0, mac_, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
                 dp.send_flow_del(match=match, cookie=0)
 
                 wildcards = dp.ofproto.OFPFW_ALL
                 wildcards &= ~dp.ofproto.OFPFW_DL_DST
                 match = dp.ofproto_parser.OFPMatch(
-                    wildcards, 0, 0, mac, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                    wildcards, 0, 0, mac_, 0, 0, 0, 0, 0, 0, 0, 0, 0)
                 dp.send_flow_del(match=match, cookie=0)
                 dps_needs_barrier.add(dp)
 
-                self.mac2port.mac_del(dp.id, mac)
+                self.mac2port.mac_del(dp.id, mac_)
 
-            self.mac2net.del_mac(mac)
+            self.mac2net.del_mac(mac_)
 
         self.nw.port_deleted(datapath.id, port_no)
 
         for dp in dps_needs_barrier:
             dp.send_barrier()
 
-    @set_ev_cls(event.EventOFPPortStatus, main_dispatcher)
+    @set_ev_cls(event.EventOFPPortStatus, MAIN_DISPATCHER)
     def port_status_handler(self, ev):
         msg = ev.msg
         reason = msg.reason
@@ -334,8 +335,7 @@ class SimpleIsolation(object):
             self._port_del(ev)
         else:
             assert reason == ofproto.OFPPR_MODIFY
-            pass
 
-    @set_ev_cls(event.EventOFPBarrierReply, main_dispatcher)
+    @set_ev_cls(event.EventOFPBarrierReply, MAIN_DISPATCHER)
     def barrier_replay_handler(self, ev):
         pass

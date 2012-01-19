@@ -180,9 +180,9 @@ class OFPMatch(collections.namedtuple('OFPMatchBase', (
 
 
 class OFPActionHeader(object):
-    def __init__(self, type, len):
-        self.type = type
-        self.len = len
+    def __init__(self, type_, len_):
+        self.type = type_
+        self.len = len_
 
     def serlize(self, buf, offset):
         _pack_into(ofproto_v1_0.OFP_ACTION_HEADER_PACK_STR,
@@ -288,6 +288,7 @@ class OFPVendor(MsgBase):
     def __init__(self, datapath):
         super(OFPVendor, self).__init__(datapath)
         self.data = None
+        self.vendor = None
 
     @classmethod
     def parser(cls, datapath, version, msg_type, msg_len, xid, buf):
@@ -320,7 +321,7 @@ class OFPSwitchFeatures(MsgBase):
 
     def __str__(self):
         buf = super(OFPSwitchFeatures, self).__str__() + ' port'
-        for port_no, p in getattr(self, 'ports', {}).items():
+        for _port_no, p in getattr(self, 'ports', {}).items():
             buf += ' ' + str(p)
         return buf
 
@@ -340,7 +341,7 @@ class OFPSwitchFeatures(MsgBase):
         n_ports = ((msg_len - ofproto_v1_0.OFP_SWITCH_FEATURES_SIZE) /
                    ofproto_v1_0.OFP_PHY_PORT_SIZE)
         offset = ofproto_v1_0.OFP_SWITCH_FEATURES_SIZE
-        for i in range(n_ports):
+        for _i in range(n_ports):
             port = OFPPhyPort.parser(msg.buf, offset)
             # print 'port = %s' % str(port)
             msg.ports[port.port_no] = port

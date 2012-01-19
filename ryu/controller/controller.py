@@ -51,7 +51,7 @@ class OpenFlowController(object):
     def server_loop(self):
         server = StreamServer((FLAGS.ofp_listen_host,
                                FLAGS.ofp_tcp_listen_port),
-                              DatapathConnectionFactory)
+                              datapath_connection_factory)
         #LOG.debug('loop')
         server.serve_forever()
 
@@ -83,7 +83,7 @@ class Datapath(object):
         self.recv_q = Queue()
         self.send_q = Queue()
 
-        self.ev_q = dispatcher.EventQueue(handler.handshake_dispatcher)
+        self.ev_q = dispatcher.EventQueue(handler.HANDSHAKE_DISPATCHER)
 
         self.version_sent = None
         self.version_recv = None
@@ -203,8 +203,8 @@ class Datapath(object):
         self.send_msg(barrier_request)
 
 
-def DatapathConnectionFactory(socket, address):
+def datapath_connection_factory(socket, address):
     LOG.debug('connected socket:%s address:%s', socket, address)
 
-    datapath = Datapath(socket, address, dpset.dpset)
+    datapath = Datapath(socket, address, dpset.DPSET)
     datapath.serve()

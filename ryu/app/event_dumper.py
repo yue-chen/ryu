@@ -22,12 +22,12 @@ LOG = logging.getLogger('ryu.app.event_dumper')
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_multistring('dump_dispatcher',
-                          ['ryu.controller.handler.main_dispatcher'],
+                          ['ryu.controller.handler.MAIN_DISPATCHER'],
                           'list of dispatchers to dump event')
 
 
 class EventDumper(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *_args, **_kwargs):
         for d in FLAGS.dump_dispatcher:
             d = utils.import_object(d)
             d.register_all_handler(self._dump_event)

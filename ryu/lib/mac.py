@@ -14,8 +14,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-dontcare = '\x00' * 6
-broadcast = '\xff' * 6
+DONTCARE = '\x00' * 6
+BROADCAST = '\xff' * 6
 
 
 def is_multicast(addr):

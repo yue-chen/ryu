@@ -16,17 +16,15 @@
 import copy
 import inspect
 import logging
-import struct
 
 from ryu.controller import event
 from ryu.controller import dispatcher
-from ryu.lib.mac import haddr_to_bin
 
 LOG = logging.getLogger('ryu.controller.handler')
 
-handshake_dispatcher = dispatcher.EventDispatcher('handshake')
-config_dispatcher = dispatcher.EventDispatcher('config')
-main_dispatcher = dispatcher.EventDispatcher('main')
+HANDSHAKE_DISPATCHER = dispatcher.EventDispatcher('handshake')
+CONFIG_DISPATCHER = dispatcher.EventDispatcher('config')
+MAIN_DISPATCHER = dispatcher.EventDispatcher('main')
 
 
 def set_ev_cls(ev_cls, dispatchers=None):
@@ -66,8 +64,8 @@ def register_cls(dispatchers=None):
     dispatchers = _listify(dispatchers)
 
     def _register_cls_method(cls):
-        for k, f in inspect.getmembers(cls, inspect.isfunction):
-            # LOG.debug('cls %s k %s f %s', cls, k, f)
+        for _k, f in inspect.getmembers(cls, inspect.isfunction):
+            # LOG.debug('cls %s k %s f %s', cls, _k, f)
             if not _is_ev_handler(f):
                 continue
 
@@ -84,8 +82,8 @@ def register_cls(dispatchers=None):
 def register_instance(i, dispatchers=None):
     dispatchers = _listify(dispatchers)
 
-    for k, m in inspect.getmembers(i, inspect.ismethod):
-        # LOG.debug('instance %s k %s m %s', i, k, m)
+    for _k, m in inspect.getmembers(i, inspect.ismethod):
+        # LOG.debug('instance %s k %s m %s', i, _k, m)
         if not _is_ev_handler(m):
             continue
 
@@ -93,11 +91,11 @@ def register_instance(i, dispatchers=None):
         # LOG.debug("_dispatchers %s", _dispatchers)
         for d in _dispatchers:
             # LOG.debug('register dispatcher %s ev %s k %s m %s',
-            #           d.name, m.ev_cls, k, m)
+            #           d.name, m.ev_cls, _k, m)
             d.register_handler(m.ev_cls, m)
 
 
-@register_cls([handshake_dispatcher, config_dispatcher, main_dispatcher])
+@register_cls([HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
 class EchoHandler(object):
     @staticmethod
     @set_ev_cls(event.EventOFPEchoRequest)
@@ -118,7 +116,7 @@ class EchoHandler(object):
         pass
 
 
-@register_cls([handshake_dispatcher, config_dispatcher, main_dispatcher])
+@register_cls([HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
 class ErrorMsgHandler(object):
     @staticmethod
     @set_ev_cls(event.EventOFPErrorMsg)
@@ -129,7 +127,7 @@ class ErrorMsgHandler(object):
         msg.datapath.is_active = False
 
 
-@register_cls(handshake_dispatcher)
+@register_cls(HANDSHAKE_DISPATCHER)
 class HandShakeHandler(object):
     @staticmethod
     @set_ev_cls(event.EventOFPHello)
@@ -158,10 +156,10 @@ class HandShakeHandler(object):
 
         # now move on to config state
         LOG.debug('move onto config mode')
-        datapath.ev_q.set_dispatcher(config_dispatcher)
+        datapath.ev_q.set_dispatcher(CONFIG_DISPATCHER)
 
 
-@register_cls(config_dispatcher)
+@register_cls(CONFIG_DISPATCHER)
 class ConfigHandler(object):
     @staticmethod
     @set_ev_cls(event.EventOFPSwitchFeatures)
@@ -202,16 +200,16 @@ class ConfigHandler(object):
 
         # move on to main state
         LOG.debug('move onto main mode')
-        ev.msg.datapath.ev_q.set_dispatcher(main_dispatcher)
+        ev.msg.datapath.ev_q.set_dispatcher(MAIN_DISPATCHER)
         ev.msg.datapath.dpset().register(ev.msg.datapath)
 
 
-@register_cls(main_dispatcher)
+@register_cls(MAIN_DISPATCHER)
 class MainHandler(object):
     @staticmethod
     @set_ev_cls(event.EventOFPFlowRemoved)
     def flow_removed_handler(ev):
-        msg = ev.msg
+        pass
 
     @staticmethod
     @set_ev_cls(event.EventOFPPortStatus)

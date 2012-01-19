@@ -23,27 +23,28 @@ class EventDP(event.EventBase):
         # enter_leave
         # True: dp entered
         # False: dp leaving
+        super(EventDP, self).__init__()
         self.dp = dp
         self.enter = enter_leave
 
 
 class DPSet(object):
-    def __init__(self, ev_q, dispatcher):
+    def __init__(self, ev_q, dispatcher_):
         # dp registration and type setting can be occur in any order
         # Sometimes the sw_type is set before dp connection
         self.dp_types = {}
 
         self.dps = set()
         self.ev_q = ev_q
-        self.dispatcher = dispatcher
+        self.dispatcher = dispatcher_
 
     def register(self, dp):
         assert dp not in self.dps
         assert dp.id is not None
 
-        dp_type = self.dp_types.pop(dp.id, None)
-        if dp_type is not None:
-            dp.dp_type = dp_type
+        dp_type_ = self.dp_types.pop(dp.id, None)
+        if dp_type_ is not None:
+            dp.dp_type = dp_type_
 
         self.ev_q.queue(EventDP(dp, True))
         self.dps.add(dp)
@@ -66,6 +67,6 @@ class DPSet(object):
         return self.dps
 
 
-dpset_ev_dispatcher = dispatcher.EventDispatcher('dpset')
-_dpset_ev_q = dispatcher.EventQueue(dpset_ev_dispatcher)
-dpset = DPSet(_dpset_ev_q, dpset_ev_dispatcher)
+DPSET_EV_DISPATCHER = dispatcher.EventDispatcher('dpset')
+_DPSET_EV_Q = dispatcher.EventQueue(DPSET_EV_DISPATCHER)
+DPSET = DPSet(_DPSET_EV_Q, DPSET_EV_DISPATCHER)

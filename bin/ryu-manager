@@ -24,14 +24,12 @@ from gevent import monkey
 monkey.patch_all()
 
 from ryu import log
-log.earlyInitLog(logging.DEBUG)
+log.early_init_log(logging.DEBUG)
 
-from ryu import flags
 from ryu import utils
 from ryu.base.app_manager import AppManager
 from ryu.controller import controller
 from ryu.app import wsapi
-from ryu.app import rest
 from ryu.controller import network
 
 
@@ -44,10 +42,10 @@ gflags.DEFINE_multistring('app_lists',
 
 def main():
     utils.find_flagfile()
-    args = FLAGS(sys.argv)
-    log.initLog()
+    _args = FLAGS(sys.argv)
+    log.init_log()
 
-    nw = network.network()
+    nw = network.Network()
 
     app_mgr = AppManager()
     app_mgr.load_apps(FLAGS.app_lists, network=nw)
