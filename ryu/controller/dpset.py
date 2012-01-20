@@ -13,9 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
+
 from ryu.controller import event
 from ryu.controller import dispatcher
 from ryu.controller import dp_type
+from ryu.controller import handler
+from ryu.controller.handler import set_ev_cls
+
+LOG = logging.getLogger('ryu.controller.dpset')
 
 
 class EventDP(event.EventBase):
@@ -28,6 +34,7 @@ class EventDP(event.EventBase):
         self.enter = enter_leave
 
 
+# this depends on controller::Datapath and dispatchers in handler
 class DPSet(object):
     def __init__(self, ev_q, dispatcher_):
         # dp registration and type setting can be occur in any order
@@ -37,6 +44,8 @@ class DPSet(object):
         self.dps = set()
         self.ev_q = ev_q
         self.dispatcher = dispatcher_
+
+        handler.register_instance(self)
 
     def register(self, dp):
         assert dp not in self.dps
@@ -66,7 +75,31 @@ class DPSet(object):
     def get_all(self):
         return self.dps
 
+    @set_ev_cls(dispatcher.EventQueueCreate,
+                dispatcher.QUEUE_EV_DISPATCHER)
+    def queue_create(self, ev):
+        LOG.debug('queue create q %s', ev.ev_q.name)
+        if (ev.ev_q.name == handler.QUEUE_NAME_OFP_MSG and ev.create is False):
+            datapath = ev.ev_q.aux()
+            assert datapath is not None
+            LOG.debug('DPSET: unregister datapath %s', datapath)
+            self.unregister(datapath)
 
-DPSET_EV_DISPATCHER = dispatcher.EventDispatcher('dpset')
-_DPSET_EV_Q = dispatcher.EventQueue('datapath', DPSET_EV_DISPATCHER)
+    @set_ev_cls(dispatcher.EventDispatcherChange,
+                dispatcher.QUEUE_EV_DISPATCHER)
+    def dispacher_change(self, ev):
+        LOG.debug('dispatcher change q %s dispatcher %s',
+                  ev.ev_q.name, ev.new_dispatcher.name)
+        if (ev.ev_q.name == handler.QUEUE_NAME_OFP_MSG and
+            ev.new_dispatcher.name == handler.DISPATCHER_NAME_OFP_MAIN):
+            datapath = ev.ev_q.aux()
+            assert datapath is not None
+            LOG.debug('DPSET: register datapath %s', datapath)
+            self.register(datapath)
+
+
+DISPATCHER_NAME_DPSET = 'dpset'
+DPSET_EV_DISPATCHER = dispatcher.EventDispatcher(DISPATCHER_NAME_DPSET)
+QUEUE_NAME_DPSET = 'datapath'
+_DPSET_EV_Q = dispatcher.EventQueue(QUEUE_NAME_DPSET, DPSET_EV_DISPATCHER)
 DPSET = DPSet(_DPSET_EV_Q, DPSET_EV_DISPATCHER)

@@ -206,7 +206,6 @@ class ConfigHandler(object):
         # move on to main state
         LOG.debug('move onto main mode')
         ev.msg.datapath.ev_q.set_dispatcher(MAIN_DISPATCHER)
-        ev.msg.datapath.dpset().register(ev.msg.datapath)
 
 
 @register_cls(MAIN_DISPATCHER)

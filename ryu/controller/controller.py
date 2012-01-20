@@ -26,7 +26,6 @@ from ryu.ofproto import ofproto_v1_0
 from ryu.ofproto import ofproto_v1_0_parser
 
 from ryu.controller import dispatcher
-from ryu.controller import dpset
 from ryu.controller import handler
 from ryu.controller import ofp_event
 from ryu.lib.mac import haddr_to_bin
@@ -71,10 +70,9 @@ class Datapath(object):
                                    ofproto_v1_0_parser),
         }
 
-    def __init__(self, socket, address, dpset_):
+    def __init__(self, socket, address):
         super(Datapath, self).__init__()
 
-        self.dpset = weakref.ref(dpset_)
         self.socket = socket
         self.address = address
         self.is_active = True
@@ -151,7 +149,6 @@ class Datapath(object):
 
         self._recv_loop()
         gevent.joinall([ev_thr, send_thr])
-        self.dpset().unregister(self)
 
     @_deactivate
     def _event_loop(self):
@@ -209,5 +206,5 @@ class Datapath(object):
 def datapath_connection_factory(socket, address):
     LOG.debug('connected socket:%s address:%s', socket, address)
 
-    datapath = Datapath(socket, address, dpset.DPSET)
+    datapath = Datapath(socket, address)
     datapath.serve()
