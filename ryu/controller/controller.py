@@ -1,5 +1,5 @@
 # Copyright (C) 2011 Nippon Telegraph and Telephone Corporation.
-# Copyright (C) 2011 Isaku Yamahata <yamahata at valinux co jp>
+# Copyright (C) 2011, 2012 Isaku Yamahata <yamahata at valinux co jp>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -83,8 +83,10 @@ class Datapath(object):
         self.recv_q = Queue()
         self.send_q = Queue()
 
-        self.ev_q = dispatcher.EventQueue('ofp_msg',
-                                          handler.HANDSHAKE_DISPATCHER)
+        # weakref: qv_q.aux refers to aux = self
+        self.ev_q = dispatcher.EventQueue(handler.QUEUE_NAME_OFP_MSG,
+                                          handler.HANDSHAKE_DISPATCHER,
+                                          weakref.ref(self))
 
         self.version_sent = None
         self.version_recv = None

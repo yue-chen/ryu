@@ -1,5 +1,5 @@
 # Copyright (C) 2011 Nippon Telegraph and Telephone Corporation.
-# Copyright (C) 2011 Isaku Yamahata <yamahata at valinux co jp>
+# Copyright (C) 2011, 2012 Isaku Yamahata <yamahata at valinux co jp>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,9 +22,14 @@ from ryu.controller import ofp_event
 
 LOG = logging.getLogger('ryu.controller.handler')
 
-HANDSHAKE_DISPATCHER = dispatcher.EventDispatcher('handshake')
-CONFIG_DISPATCHER = dispatcher.EventDispatcher('config')
-MAIN_DISPATCHER = dispatcher.EventDispatcher('main')
+QUEUE_NAME_OFP_MSG = 'ofp_msg'
+DISPATCHER_NAME_OFP_HANDSHAKE = 'ofp_handshake'
+HANDSHAKE_DISPATCHER = dispatcher.EventDispatcher(
+    DISPATCHER_NAME_OFP_HANDSHAKE)
+DISPATCHER_NAME_OFP_CONFIG = 'ofp_config'
+CONFIG_DISPATCHER = dispatcher.EventDispatcher(DISPATCHER_NAME_OFP_CONFIG)
+DISPATCHER_NAME_OFP_MAIN = 'ofp_main'
+MAIN_DISPATCHER = dispatcher.EventDispatcher(DISPATCHER_NAME_OFP_MAIN)
 
 
 def set_ev_cls(ev_cls, dispatchers=None):
