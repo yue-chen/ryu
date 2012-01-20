@@ -68,5 +68,5 @@ class DPSet(object):
 
 
 DPSET_EV_DISPATCHER = dispatcher.EventDispatcher('dpset')
-_DPSET_EV_Q = dispatcher.EventQueue(DPSET_EV_DISPATCHER)
+_DPSET_EV_Q = dispatcher.EventQueue('datapath', DPSET_EV_DISPATCHER)
 DPSET = DPSet(_DPSET_EV_Q, DPSET_EV_DISPATCHER)
