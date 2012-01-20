@@ -19,9 +19,9 @@ import struct
 from ryu.app.rest_nw_id import NW_ID_UNKNOWN, NW_ID_EXTERNAL
 from ryu.exception import MacAddressDuplicated
 from ryu.exception import PortUnknown
-from ryu.controller import event
 from ryu.controller import mac_to_network
 from ryu.controller import mac_to_port
+from ryu.controller import ofp_event
 from ryu.controller.dpset import DPSET
 from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import CONFIG_DISPATCHER
@@ -39,12 +39,12 @@ class SimpleIsolation(object):
         self.mac2port = mac_to_port.MacToPortTable()
         self.mac2net = mac_to_network.MacToNetwork(self.nw)
 
-    @set_ev_cls(event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         self.mac2port.dpid_add(ev.msg.datapath_id)
         self.nw.add_datapath(ev.msg)
 
-    @set_ev_cls(event.EventOFPBarrierReply)
+    @set_ev_cls(ofp_event.EventOFPBarrierReply)
     def barrier_reply_handler(self, ev):
         LOG.debug('barrier reply ev %s msg %s', ev, ev.msg)
 
@@ -113,7 +113,7 @@ class SimpleIsolation(object):
     def _drop_packet(self, msg, src, dst):
         self._modflow_and_send_packet(msg, src, dst, [])
 
-    @set_ev_cls(event.EventOFPPacketIn, MAIN_DISPATCHER)
+    @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in_handler(self, ev):
         # LOG.debug('packet in ev %s msg %s', ev, ev.msg)
         msg = ev.msg
@@ -289,7 +289,7 @@ class SimpleIsolation(object):
             port_nw_id = self.nw.get_network(datapath_id, port_no)
         except PortUnknown:
             # race condition between rest api delete port
-            # and openflow port deletion event
+            # and openflow port deletion ofp_event
             pass
         else:
             if port_nw_id in (NW_ID_UNKNOWN, NW_ID_EXTERNAL):
@@ -323,7 +323,7 @@ class SimpleIsolation(object):
         for dp in dps_needs_barrier:
             dp.send_barrier()
 
-    @set_ev_cls(event.EventOFPPortStatus, MAIN_DISPATCHER)
+    @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
     def port_status_handler(self, ev):
         msg = ev.msg
         reason = msg.reason
@@ -336,6 +336,6 @@ class SimpleIsolation(object):
         else:
             assert reason == ofproto.OFPPR_MODIFY
 
-    @set_ev_cls(event.EventOFPBarrierReply, MAIN_DISPATCHER)
+    @set_ev_cls(ofp_event.EventOFPBarrierReply, MAIN_DISPATCHER)
     def barrier_replay_handler(self, ev):
         pass
