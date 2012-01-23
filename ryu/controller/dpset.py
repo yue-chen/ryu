@@ -19,6 +19,7 @@ from ryu.controller import event
 from ryu.controller import dispatcher
 from ryu.controller import dp_type
 from ryu.controller import handler
+from ryu.controller import ofp_event
 from ryu.controller.handler import set_ev_cls
 
 LOG = logging.getLogger('ryu.controller.dpset')
@@ -37,6 +38,27 @@ class EventDP(EventDPBase):
         # False: dp leaving
         super(EventDP, self).__init__(dp)
         self.enter = enter_leave
+
+
+class EventPortBase(EventDPBase):
+    def __init__(self, dp, port):
+        super(EventPortBase, self).__init__(dp)
+        self.port = port
+
+
+class EventPortAdd(EventPortBase):
+    def __init__(self, dp, port):
+        super(EventPortAdd, self).__init__(dp, port)
+
+
+class EventPortDelete(EventPortBase):
+    def __init__(self, dp, port):
+        super(EventPortDelete, self).__init__(dp, port)
+
+
+class EventPortModify(EventPortBase):
+    def __init__(self, dp, port):
+        super(EventPortModify, self).__init__(dp, port)
 
 
 # this depends on controller::Datapath and dispatchers in handler
@@ -101,6 +123,24 @@ class DPSet(object):
         elif ev.new_dispatcher.name == handler.DISPATCHER_NAME_OFP_DEAD:
             LOG.debug('DPSET: unregister datapath %s', datapath)
             self.unregister(datapath)
+
+    @set_ev_cls(ofp_event.EventOFPPortStatus, handler.MAIN_DISPATCHER)
+    def port_status_handler(self, ev):
+        msg = ev.msg
+        reason = msg.reason
+        datapath = msg.datapath
+        port = msg.desc
+        ofproto = datapath.ofproto
+
+        LOG.debug('port status %s', reason)
+
+        if reason == ofproto.OFPPR_ADD:
+            self.ev_q.eueue(EventPortAdd(datapath, port))
+        elif reason == ofproto.OFPPR_DELETE:
+            self.ev_q.eueue(EventPortDelete(datapath, port))
+        else:
+            assert reason == ofproto.OFPPR_MODIFY
+            self.ev_q.eueue(EventPortModify(datapath, port))
 
 
 DISPATCHER_NAME_DPSET = 'dpset'
