@@ -686,6 +686,58 @@ class OFPSwitchFeatures(MsgBase):
 
         return msg
 
+    def capabilities_str(self):
+        ret = ''
+
+        if self.capabilities & ofproto_v1_0.OFPC_FLOW_STATS:
+            ret += 'flow_stats '
+        if self.capabilities & ofproto_v1_0.OFPC_TABLE_STATS:
+            ret += 'table_stats '
+        if self.capabilities & ofproto_v1_0.OFPC_PORT_STATS:
+            ret += 'port_stats '
+        if self.capabilities & ofproto_v1_0.OFPC_STP:
+            ret += 'stp '
+        if self.capabilities & ofproto_v1_0.OFPC_RESERVED:
+            ret += 'reserved '
+        if self.capabilities & ofproto_v1_0.OFPC_IP_REASM:
+            ret += 'ip_reasm '
+        if self.capabilities & ofproto_v1_0.OFPC_QUEUE_STATS:
+            ret += 'queue_stats '
+        if self.capabilities & ofproto_v1_0.OFPC_ARP_MATCH_IP:
+            ret += 'arp_match_ip '
+
+        return ret[:-1]
+
+    def actions_str(self):
+        ret = ''
+
+        if self.actions & (1 << ofproto_v1_0.OFPAT_OUTPUT):
+            ret += "output "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_VLAN_VID):
+            ret += "set_vlan_vid "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_VLAN_PCP):
+            ret += "set_vlan_pcp "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_STRIP_VLAN):
+            ret += "strip_vlan "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_DL_SRC):
+            ret += "set_dl_src "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_DL_DST):
+            ret += "set_dl_dst "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_NW_SRC):
+            ret += "set_nw_src "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_NW_DST):
+            ret += "set_nw_dst "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_NW_TOS):
+            ret += "set_nw_tos "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_TP_SRC):
+            ret += "set_tp_src "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_TP_DST):
+            ret += "set_tp_dst "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_ENQUEUE):
+            ret += "enqueue "
+
+        return ret[:-1]
+
 
 @_register_parser
 @_set_msg_type(ofproto_v1_0.OFPT_PORT_STATUS)
