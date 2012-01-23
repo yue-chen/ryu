@@ -17,6 +17,7 @@ import copy
 import inspect
 import logging
 
+from ryu.controller.switch_features import SwitchFeatures
 from ryu.controller import dispatcher
 from ryu.controller import ofp_event
 
@@ -181,6 +182,7 @@ class ConfigHandler(object):
 
         datapath.id = msg.datapath_id
         datapath.ports = msg.ports
+        datapath.features = SwitchFeatures(msg)
 
         ofproto = datapath.ofproto
         ofproto_parser = datapath.ofproto_parser
@@ -236,3 +238,17 @@ class MainHandler(object):
     def port_status_handler(ev):
         msg = ev.msg
         LOG.debug('port status %s', msg.reason)
+
+        msg = ev.msg
+        reason = msg.reason
+        port = msg.desc
+        datapath = msg.datapath
+        ofproto = datapath.ofproto
+
+        if reason == ofproto.OFPPR_ADD:
+            datapath.ports.append(port)
+        elif reason == ofproto.OFPPR_DELETE:
+            del datapath.ports[port.port_no]
+        else:
+            assert reason == ofproto.OFPPR_MODIFY
+            datapath.ports[port.port_no] = port

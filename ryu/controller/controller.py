@@ -90,6 +90,8 @@ class Datapath(object):
         self.set_version(max(self.supported_ofp_version))
         self.xid = random.randint(0, self.ofproto.MAX_XID)
         self.id = None  # datapath_id is unknown yet
+
+        self.features = None
         self.ports = None
 
     def set_version(self, version):
