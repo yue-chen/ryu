@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # Copyright (C) 2011 Nippon Telegraph and Telephone Corporation.
-# Copyright (C) 2011 Isaku Yamahata <yamahata at valinux co jp>
+# Copyright (C) 2011,2012 Isaku Yamahata <yamahata at valinux co jp>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ import sys
 from optparse import OptionParser
 
 from ryu.app.client import OFPClient
+from ryu.app.client import SwitchClient
 
 
 def client_test():
@@ -32,16 +33,46 @@ def client_test():
         parser.print_help()
         sys.exit(1)
 
-    client = OFPClient(options.host + ':' + str(options.port))
+    address = options.host + ':' + str(options.port)
+    ofp_client = OFPClient(address)
+    sw_client = SwitchClient(address)
+
     commands = {
-        'list_nets': lambda a: sys.stdout.write(client.get_networks()),
-        'create_net': lambda a: client.create_network(a[1]),
-        'update_net': lambda a: client.update_network(a[1]),
-        'delete_net': lambda a: client.delete_network(a[1]),
-        'list_ports': lambda a: sys.stdout.write(client.get_ports(a[1])),
-        'create_port': lambda a: client.create_port(a[1], a[2], a[3]),
-        'update_port': lambda a: client.update_port(a[1], a[2], a[3]),
-        'delete_port': lambda a: client.delete_port(a[1], a[2], a[3])
+        'list_nets': lambda a: sys.stdout.write(ofp_client.get_networks()),
+        'create_net': lambda a: ofp_client.create_network(a[1]),
+        'update_net': lambda a: ofp_client.update_network(a[1]),
+        'delete_net': lambda a: ofp_client.delete_network(a[1]),
+        'list_ports': lambda a: sys.stdout.write(ofp_client.get_ports(a[1])),
+        'create_port': lambda a: ofp_client.create_port(a[1], a[2], a[3]),
+        'update_port': lambda a: ofp_client.update_port(a[1], a[2], a[3]),
+        'delete_port': lambda a: ofp_client.delete_port(a[1], a[2], a[3]),
+
+        'list_sw': lambda a: sys.stdout.write(sw_client.list_switches()),
+        'get_sw': lambda a: sys.stdout.write(sw_client.get_switch(a[1])),
+        'get_sw_type': lambda a: sys.stdout.write(
+            sw_client.get_switch_type(a[1])),
+        'get_sw_current_version': lambda a: sys.stdout.write(
+            sw_client.get_switch_current_version(a[1])),
+        'get_sw_desc_stats': lambda a: sys.stdout.write(
+            sw_client.get_switch_desc_stats(a[1])),
+        'get_sw_tables_stats': lambda a: sys.stdout.write(
+            sw_client.get_switch_tables_stats(a[1])),
+        'list_sw_ports': lambda a: sys.stdout.write(
+            sw_client.list_ports(a[1])),
+        'get_sw_port': lambda a: sys.stdout.write(
+            sw_client.get_port(a[1], a[2])),
+        'get_sw_port_type': lambda a: sys.stdout.write(
+            sw_client.get_port_type(a[1], a[2])),
+        'get_sw_port_network_id': lambda a: sys.stdout.write(
+            sw_client.get_port_network_id(a[1], a[2])),
+        'get_sw_port_stats': lambda a: sys.stdout.write(
+            sw_client.get_port_stats(a[1], a[2])),
+        'get_sw_queues': lambda a: sys.stdout.write(
+            sw_client.get_queues(a[1], a[2])),
+        'get_sw_queue_properties': lambda a: sys.stdout.write(
+            sw_client.get_queue_properties(a[1], a[2], a[3])),
+        'get_sw_queue_stats': lambda a: sys.stdout.write(
+            sw_client.get_queue_stats(a[1], a[2], a[3])),
         }
 
     # allow '-', instead of '_'
