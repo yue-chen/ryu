@@ -21,6 +21,7 @@ import weakref
 from gevent.server import StreamServer
 from gevent.queue import Queue
 
+from ryu import exception as ryu_exception
 from ryu.ofproto import ofproto
 from ryu.ofproto import ofproto_parser
 from ryu.ofproto import ofproto_v1_0
@@ -62,6 +63,10 @@ def _deactivate(method):
         finally:
             self.is_active = False
     return deactivate
+
+
+# TODO:XXX What default timeout is appropriate? configurable?
+_DEFAULT_TIMEOUT = 1.0
 
 
 class Datapath(object):
@@ -139,13 +144,92 @@ class Datapath(object):
         msg.set_xid(self.xid)
         return self.xid
 
-    def send_msg(self, msg):
+    def _serialize_msg(self, msg):
         assert isinstance(msg, self.ofproto_parser.MsgBase)
         if msg.xid is None:
             self.set_xid(msg)
         msg.serialize()
+
+    def send_msg(self, msg):
+        self._serialize_msg(msg)
         # LOG.debug('send_msg %s', msg)
         self.send(msg.buf)
+
+    def _do_send_request(self, msg, is_last_fn, get_fn):
+        # TODO:XXX When datapath disappears, raise exception.
+        self._serialize_msg(msg)
+        version = msg.version
+        xid = msg.xid
+        cls_ev_reply = msg.cls_ev_reply
+        ev_q = self.ev_q
+        async_result = gevent.event.AsyncResult()
+
+        def unregister_callback():
+            ev_q.dispatcher.unregister_inheritable_handler(cls_ev_reply,
+                                                           callback)
+            ev_q.dispatcher.unregister_inheritable_handler(
+                ofp_event.EventOFPErrorMsg, error_callback)
+
+        def callback(ev):
+            msg_ = ev.msg
+            if (msg_.version == version and msg_.xid == xid and
+                ev.__class__ == cls_ev_reply):
+                if is_last_fn(msg_):
+                    unregister_callback()
+                async_result.set(msg_)
+
+        def error_callback(ev):
+            msg_ = ev.msg
+            if (msg_.version == version and
+                msg_.type != self.ofproto.OFPET_HELLO_FAILED and
+                msg_.xid == xid):
+                (data_version,
+                 data_msg_type,
+                 data_msg_len,
+                 data_xid) = ofproto_parser.header(msg_.data)
+                if (data_version == msg.version and
+                    data_msg_type == msg.msg_type and
+                    data_msg_len == msg.msg_len and
+                    data_xid == msg.xid):
+
+                    LOG.debug('error message %s', msg_)
+                    unregister_callback()
+                    exc = ryu_exception.OFPErrorMessage(ev, type=msg_.type,
+                                                        code=msg_.code)
+                    async_result.set_exception(exc)
+
+        ev_q.dispatcher.register_inheritable_handler(cls_ev_reply, callback)
+        ev_q.dispatcher.register_inheritable_handler(
+            ofp_event.EventOFPErrorMsg, error_callback)
+        self.send(msg.buf)
+
+        try:
+            return get_fn(async_result)
+        except gevent.Timeout:
+            unregister_callback()
+            raise
+
+    def send_request(self, msg, timeout=_DEFAULT_TIMEOUT):
+        # one shot
+        return self._do_send_request(msg,
+                    lambda msg_: True,
+                    lambda async_result: async_result.get(timeout=timeout))
+
+    # for stats request
+    def send_stats_request(self, msg, timeout=_DEFAULT_TIMEOUT):
+        def is_last_fn(msg_):
+            return not (msg_.flags & self.ofproto.OFPSF_REPLY_MORE)
+
+        def get_fn(async_result):
+            ret = []
+            while True:
+                msg_ = async_result.get(timeout=timeout)
+                ret.append(msg_)
+                if is_last_fn(msg_):
+                    break
+            return ret
+
+        return self._do_send_request(msg, is_last_fn, get_fn)
 
     def serve(self):
         send_thr = gevent.spawn(self._send_loop)
@@ -210,6 +294,37 @@ class Datapath(object):
     def send_barrier(self):
         barrier_request = self.ofproto_parser.OFPBarrierRequest(self)
         self.send_msg(barrier_request)
+
+    def request_queue_config(self, port_no, timeout=_DEFAULT_TIMEOUT):
+        queue_get_config = self.ofproto_parser.OFPQueueGetConfigRequest(
+            self, port_no)
+        return self.send_request(queue_get_config, timeout)
+
+    def request_desc_stats(self, timeout=_DEFAULT_TIMEOUT):
+        msg = self.ofproto_parser.OFPDescStatsRequest(self, 0)
+        msgs = self.send_stats_request(msg, timeout)
+        # assuming that ofp_desc_stats doesn't carry OFPSF_REPLY_MORE
+        return msgs[0].body
+
+    def _request_stats_array(self, msg, timeout):
+        msgs = self.send_stats_request(msg, timeout)
+        body = []
+        for m in msgs:
+            body.extend(m.body)
+        return body
+
+    def request_table_stats(self, timeout=_DEFAULT_TIMEOUT):
+        msg = self.ofproto_parser.OFPTableStatsRequest(self, 0)
+        return self._request_stats_array(msg, timeout)
+
+    def request_port_stats(self, port_no, timeout=_DEFAULT_TIMEOUT):
+        msg = self.ofproto_parser.OFPPortStatsRequest(self, 0, port_no)
+        return self._request_stats_array(msg, timeout)
+
+    def request_queue_stats(self, port_no, queue_id, timeout=_DEFAULT_TIMEOUT):
+        msg = self.ofproto_parser.OFPQueueStatsRequest(self, 0,
+                                                       port_no, queue_id)
+        return self._request_stats_array(msg, timeout)
 
 
 def datapath_connection_factory(socket, address):
