@@ -54,16 +54,28 @@ def _create_ofp_msg_ev_class(msg_cls):
     _OFP_MSG_EVENTS[name] = cls
 
 
+def _is_ofp_msg(cls):
+    return inspect.isclass(cls) and 'cls_msg_type' in cls.__dict__
+
+
 def _create_ofp_msg_ev_from_module(modname):
     (f, _s, _t) = modname.rpartition('.')
     mod = __import__(modname, fromlist=[f])
     print mod
     for _k, cls in mod.__dict__.items():
-        if not inspect.isclass(cls):
-            continue
-        if 'cls_msg_type' not in cls.__dict__:
+        if not _is_ofp_msg(cls):
             continue
         _create_ofp_msg_ev_class(cls)
+
+    # convert OFP message, cls_msg_reply, into EventOFPMsg
+    for _k, cls in mod.__dict__.items():
+        if not _is_ofp_msg(cls):
+            continue
+        cls_msg_reply = cls.__dict__.get('cls_msg_reply', None)
+        if cls_msg_reply is None:
+            continue
+        ev_name = _ofp_msg_name_to_ev_name(cls_msg_reply.__name__)
+        cls.cls_ev_reply = _OFP_MSG_EVENTS[ev_name]
 
 
 # TODO:XXX
