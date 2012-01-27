@@ -38,6 +38,9 @@ class OFPMalformedMessage(RyuException):
     message = 'malformed message'
 
 
+class OFPErrorMessage(RyuException):
+    message = 'error message %(type)s %(code)s'
+
 class NetworkNotFound(RyuException):
     message = 'no such network id %(network_id)s'
 
