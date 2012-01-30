@@ -15,12 +15,25 @@
 
 #
 # datapath type
-# At this moment, this information is not used yet and unknown type is
-# defined as place-holder.
-# switches are categorized by its rolls and openflow controller may want to
-# handle switch differently depending on it role.
+# At this moment, this information is not used yet.
+# switches are categorized by its rolls
+# openflow controller may want to handle switch differently depending
+# on it role
+#
+# core network switch:  switch that connects only internal network entities.
+#                       OF controller sees this kinds of switch as
+#                       internal routing
+#
+# edge network switch:  switch that connects public network entity to
+#                       our internal network.
+#
+# VM network switch:    switch that connects VM to our internal network.
+#                       typically OVS in host OS.
 #
 # unknown:
 #
 
+CORE_NETWORK = 'CORE_NETWORK'
+EDGE_NETWORK = 'EDGE_NETWORK'
+EDGE_VM = 'EDGE_VM'
 UNKNOWN = 'UNKNOWN'
