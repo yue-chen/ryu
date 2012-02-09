@@ -246,7 +246,7 @@ class MainHandler(object):
         ofproto = datapath.ofproto
 
         if reason == ofproto.OFPPR_ADD:
-            datapath.ports.append(port)
+            datapath.ports[port.port_no] = port
         elif reason == ofproto.OFPPR_DELETE:
             del datapath.ports[port.port_no]
         else:
