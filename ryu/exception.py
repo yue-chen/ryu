@@ -38,6 +38,14 @@ class OFPMalformedMessage(RyuException):
     message = 'malformed message'
 
 
+class OFPErrorMessage(RyuException):
+    message = 'error message %(type)s %(code)s'
+
+
+class OFPDatapathDisconnected(RyuException):
+    message = 'datapath %(id)s is disconnected'
+
+
 class NetworkNotFound(RyuException):
     message = 'no such network id %(network_id)s'
 
@@ -59,5 +67,22 @@ class PortUnknown(RyuException):
     message = 'unknown network id for port (%(dpid)s %(port)s)'
 
 
+class MacAddressAlreadyExist(RyuException):
+    message = 'port (%(dpid)s, %(port)s) has already mac %(mac_address)s'
+
+
 class MacAddressDuplicated(RyuException):
     message = 'MAC address %(mac)s is duplicated'
+
+
+class RemoteDPIDAlreadyExist(RyuException):
+    message = ('port (%(dpid)s, %(port)s) has already '
+               'remote dpid %(remote_dpid)s')
+
+
+class TunnelKeyAlreadyExist(RyuException):
+    message = 'tunnel key %(tunnel_key)s already exists'
+
+
+class TunnelKeyNotFound(RyuException):
+    message = 'no tunnel key for network %(network_id)s'
