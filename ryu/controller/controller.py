@@ -101,6 +101,8 @@ class Datapath(object):
         self.set_version(max(self.supported_ofp_version))
         self.xid = random.randint(0, self.ofproto.MAX_XID)
         self.id = None  # datapath_id is unknown yet
+
+        self.features = None
         self.ports = None
         self.flow_format = ofproto_v1_0.NXFF_OPENFLOW10
 
@@ -168,11 +170,14 @@ class Datapath(object):
         msg.set_xid(self.xid)
         return self.xid
 
-    def send_msg(self, msg):
+    def serialize_msg(self, msg):
         assert isinstance(msg, self.ofproto_parser.MsgBase)
         if msg.xid is None:
             self.set_xid(msg)
         msg.serialize()
+
+    def send_msg(self, msg):
+        self.serialize_msg(msg)
         # LOG.debug('send_msg %s', msg)
         self.send(msg.buf)
 
@@ -205,8 +210,10 @@ class Datapath(object):
         self.send_msg(packet_out)
 
     def send_flow_mod(self, rule, cookie, command, idle_timeout, hard_timeout,
-                      priority, buffer_id=0xffffffff,
+                      priority=None, buffer_id=0xffffffff,
                       out_port=None, flags=0, actions=None):
+        if priority is None:
+            priority = self.ofproto.OFP_DEFAULT_PRIORITY
         if out_port is None:
             out_port = self.ofproto.OFPP_NONE
         flow_format = rule.flow_format()
@@ -243,14 +250,14 @@ class Datapath(object):
         barrier_request = self.ofproto_parser.OFPBarrierRequest(self)
         self.send_msg(barrier_request)
 
-    def send_nxt_set_flow_format(self, format):
-        assert (format == ofproto_v1_0.NXFF_OPENFLOW10 or
-                format == ofproto_v1_0.NXFF_NXM)
-        if self.flow_format == format:
+    def send_nxt_set_flow_format(self, flow_format):
+        assert (flow_format == ofproto_v1_0.NXFF_OPENFLOW10 or
+                flow_format == ofproto_v1_0.NXFF_NXM)
+        if self.flow_format == flow_format:
             # Nothing to do
             return
-        self.flow_format = format
-        set_format = self.ofproto_parser.NXTSetFlowFormat(self, format)
+        self.flow_format = flow_format
+        set_format = self.ofproto_parser.NXTSetFlowFormat(self, flow_format)
         # FIXME: If NXT_SET_FLOW_FORMAT or NXFF_NXM is not supported by
         # the switch then an error message will be received. It may be
         # handled by setting self.flow_format to

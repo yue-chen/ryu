@@ -15,9 +15,11 @@
 import logging
 import struct
 
+from ryu.controller import handler_utils
 from ryu.controller import mac_to_port
 from ryu.controller import ofp_event
 from ryu.controller.handler import MAIN_DISPATCHER
+from ryu.controller.handler import register_cls_object
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import nx_match
 from ryu.lib.mac import haddr_to_str
@@ -35,7 +37,11 @@ LOG = logging.getLogger('ryu.app.simple_switch')
 
 class SimpleSwitch(object):
     def __init__(self, *_args, **_kwargs):
+        super(SimpleSwitch, self).__init__()
         self.mac2port = mac_to_port.MacToPortTable()
+
+        register_cls_object(handler_utils.ConfigHookDeleteAllFlowsHandler)
+        register_cls_object(handler_utils.ConfigHookOFPSetConfigHandler)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -67,7 +73,8 @@ class SimpleSwitch(object):
             rule.set_nw_dscp(0)
             datapath.send_flow_mod(
                 rule=rule, cookie=0, command=ofproto.OFPFC_ADD,
-                idle_timeout=0, hard_timeout=0, priority=32768,
+                idle_timeout=0, hard_timeout=0,
+                priority=ofproto.OFP_DEFAULT_PRIORITY,
                 flags=ofproto.OFPFF_SEND_FLOW_REM, actions=actions)
 
         datapath.send_packet_out(msg.buffer_id, msg.in_port, actions)

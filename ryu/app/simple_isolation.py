@@ -19,12 +19,14 @@ import struct
 from ryu.app.rest_nw_id import NW_ID_UNKNOWN, NW_ID_EXTERNAL
 from ryu.exception import MacAddressDuplicated
 from ryu.exception import PortUnknown
+from ryu.controller import handler_utils
 from ryu.controller import mac_to_network
 from ryu.controller import mac_to_port
 from ryu.controller import ofp_event
 from ryu.controller.handler import MAIN_DISPATCHER
-from ryu.controller.handler import CONFIG_DISPATCHER
+from ryu.controller.handler import register_cls_object
 from ryu.controller.handler import set_ev_cls
+from ryu.controller.handler import SWITCH_FEATURES_DISPATCHER
 from ryu.ofproto import nx_match
 from ryu.lib.mac import haddr_to_str
 from ryu.lib import mac
@@ -35,23 +37,33 @@ LOG = logging.getLogger('ryu.app.simple_isolation')
 
 class SimpleIsolation(object):
     def __init__(self, *_args, **kwargs):
+        super(SimpleIsolation, self).__init__()
         self.nw = kwargs['network']
         self.dpset = kwargs['dpset']
         self.mac2port = mac_to_port.MacToPortTable()
         self.mac2net = mac_to_network.MacToNetwork(self.nw)
 
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+        register_cls_object(handler_utils.ConfigHookDeleteAllFlowsHandler)
+        register_cls_object(handler_utils.ConfigHookOFPSetConfigHandler)
+
+    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, SWITCH_FEATURES_DISPATCHER)
     def switch_features_handler(self, ev):
         self.mac2port.dpid_add(ev.msg.datapath_id)
         self.nw.add_datapath(ev.msg)
 
-    @set_ev_cls(ofp_event.EventOFPBarrierReply)
+    @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
+    def flow_removed_handler(self, ev):
+        pass
+
+    @set_ev_cls(ofp_event.EventOFPBarrierReply, MAIN_DISPATCHER)
     def barrier_reply_handler(self, ev):
-        LOG.debug('barrier reply ev %s msg %s', ev, ev.msg)
+        # LOG.debug('barrier reply ev %s msg %s', ev, ev.msg)
+        pass
 
     @staticmethod
     def _modflow_and_send_packet(msg, src, dst, actions):
         datapath = msg.datapath
+        ofproto = datapath.ofproto
 
         #
         # install flow and then send packet
@@ -62,9 +74,10 @@ class SimpleIsolation(object):
         rule.set_dl_src(src)
         datapath.send_flow_mod(
             rule=rule, cookie=0, command=datapath.ofproto.OFPFC_ADD,
-            idle_timeout=0, hard_timeout=0, priority=32768,
-            buffer_id=0xffffffff, out_port=datapath.ofproto.OFPP_NONE,
-            flags=datapath.ofproto.OFPFF_SEND_FLOW_REM, actions=actions)
+            idle_timeout=0, hard_timeout=0,
+            priority=ofproto.OFP_DEFAULT_PRIORITY,
+            buffer_id=0xffffffff, out_port=ofproto.OFPP_NONE,
+            flags=ofproto.OFPFF_SEND_FLOW_REM, actions=actions)
 
         datapath.send_packet_out(msg.buffer_id, msg.in_port, actions)
 
@@ -154,7 +167,8 @@ class SimpleIsolation(object):
             rule.set_dl_dst(src)
             datapath.send_flow_mod(rule=rule, cookie=0,
                 command=datapath.ofproto.OFPFC_DELETE, idle_timeout=0,
-                hard_timeout=0, priority=32768, out_port=old_port)
+                hard_timeout=0, priority=datapath.ofproto.OFP_DEFAULT_PRIORITY,
+                out_port=old_port)
 
             # to make sure the old flow entries are purged.
             datapath.send_barrier()
@@ -294,7 +308,7 @@ class SimpleIsolation(object):
                 return
 
         for mac_ in self.mac2port.mac_list(datapath_id, port_no):
-            for dp in self.dpset.get_all():
+            for (_dpid, dp) in self.dpset.get_all():
                 if self.mac2port.port_get(dp.id, mac_) is None:
                     continue
 
@@ -328,7 +342,3 @@ class SimpleIsolation(object):
             self._port_del(ev)
         else:
             assert reason == ofproto.OFPPR_MODIFY
-
-    @set_ev_cls(ofp_event.EventOFPBarrierReply, MAIN_DISPATCHER)
-    def barrier_replay_handler(self, ev):
-        pass

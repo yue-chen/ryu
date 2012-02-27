@@ -17,3 +17,12 @@
 class EventBase(object):
     # Nothing yet
     pass
+
+
+class EventMsg(object):
+    """Event to send message to listener. can be used to synchronization"""
+    def __init__(self, sender, xid=None, data=None):
+        super(EventMsg, self).__init__()
+        self.sender = sender
+        self.xid = xid
+        self.data = data

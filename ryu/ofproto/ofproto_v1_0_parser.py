@@ -368,6 +368,33 @@ class NXActionHeader(object):
                       buf, offset, self.type, self.len)
 
 
+class NXActionResubmitBase(NXActionHeader):
+    def __init__(self, subtype, in_port, table):
+        assert subtype in (ofproto_v1_0.NXAST_RESUBMIT,
+                           ofproto_v1_0.NXAST_RESUBMIT_TABLE)
+        super(NXActionResubmitBase, self).__init__(
+            subtype, ofproto_v1_0.NX_ACTION_RESUBMIT_SIZE)
+        self.in_port = in_port
+        self.table = table
+
+    def serialize(self, buf, offset):
+        msg_pack_into(ofproto_v1_0.NX_ACTION_RESUBMIT_PACK_STR, buf, offset,
+                      self.type, self.len, self.vendor, self.subtype,
+                      self.in_port, self.table)
+
+
+class NXActionResubmit(NXActionResubmitBase):
+    def __init__(self, in_port=ofproto_v1_0.OFPP_IN_PORT):
+        super(NXActionResubmit, self).__init__(
+            ofproto_v1_0.NXAST_RESUBMIT, in_port, 0)
+
+
+class NXActionResubmitTable(NXActionResubmitBase):
+    def __init__(self, in_port=ofproto_v1_0.OFPP_IN_PORT, table=0xff):
+        super(NXActionResubmitTable, self).__init__(
+            ofproto_v1_0.NXAST_RESUBMIT_TABLE, in_port, table)
+
+
 class NXActionSetTunnel(NXActionHeader):
     def __init__(self, tun_id_):
         self.tun_id = tun_id_
@@ -691,9 +718,10 @@ class OFPVendor(MsgBase):
 
 
 class NXTRequest(OFPVendor):
-    def __init__(self, datapath):
+    def __init__(self, datapath, subtype):
         super(NXTRequest, self).__init__(datapath)
         self.vendor = ofproto_v1_0.NX_VENDOR_ID
+        self.subtype = subtype
 
     def serialize_header(self):
         super(NXTRequest, self).serialize_header()
@@ -703,10 +731,10 @@ class NXTRequest(OFPVendor):
 
 
 class NXTSetFlowFormat(NXTRequest):
-    def __init__(self, datapath, format):
-        super(NXTSetFlowFormat, self).__init__(datapath)
-        self.subtype = ofproto_v1_0.NXT_SET_FLOW_FORMAT
-        self.format = format
+    def __init__(self, datapath, flow_format):
+        super(NXTSetFlowFormat, self).__init__(
+            datapath, ofproto_v1_0.NXT_SET_FLOW_FORMAT)
+        self.format = flow_format
 
     def _serialize_body(self):
         self.serialize_header()
@@ -715,11 +743,21 @@ class NXTSetFlowFormat(NXTRequest):
 
 
 class NXTFlowMod(NXTRequest):
-    def __init__(self, datapath, cookie, command, idle_timeout,
-                 hard_timeout, priority, buffer_id, out_port,
-                 flags, rule, actions):
-        super(NXTFlowMod, self).__init__(datapath)
-        self.subtype = ofproto_v1_0.NXT_FLOW_MOD
+    def __init__(self, datapath, cookie, command,
+                 idle_timeout=0, hard_timeout=0,
+                 priority=ofproto_v1_0.OFP_DEFAULT_PRIORITY,
+                 buffer_id=0xffffffff, out_port=ofproto_v1_0.OFPP_NONE,
+                 flags=0, rule=None, actions=None):
+
+        # the argument, rule, is positioned at the one before the last due
+        # to the layout struct nxt_flow_mod.
+        # Although rule must be given, default argument to rule, None,
+        # is given to allow other default value of argument before rule.
+        assert rule is not None
+
+        if actions is None:
+            actions = []
+        super(NXTFlowMod, self).__init__(datapath, ofproto_v1_0.NXT_FLOW_MOD)
         self.cookie = cookie
         self.command = command
         self.idle_timeout = idle_timeout
@@ -749,6 +787,18 @@ class NXTFlowMod(NXTRequest):
                 a.serialize(self.buf, offset)
                 offset += a.len
 
+
+class NXTFlowModTableId(NXTRequest):
+    def __init__(self, datapath, set_):
+        super(NXTFlowModTableId, self).__init__(
+            datapath, ofproto_v1_0.NXT_FLOW_MOD_TABLE_ID)
+        self.set = set_
+
+    def _serialize_body(self):
+        self.serialize_header()
+        msg_pack_into(ofproto_v1_0.NX_FLOW_MOD_TABLE_ID_PACK_STR,
+                      self.buf, ofproto_v1_0.NICIRA_HEADER_SIZE,
+                      self.set)
 
 #
 # asymmetric message (datapath -> controller)
@@ -791,6 +841,58 @@ class OFPSwitchFeatures(MsgBase):
             offset += ofproto_v1_0.OFP_PHY_PORT_SIZE
 
         return msg
+
+    def capabilities_str(self):
+        ret = ''
+
+        if self.capabilities & ofproto_v1_0.OFPC_FLOW_STATS:
+            ret += 'flow_stats '
+        if self.capabilities & ofproto_v1_0.OFPC_TABLE_STATS:
+            ret += 'table_stats '
+        if self.capabilities & ofproto_v1_0.OFPC_PORT_STATS:
+            ret += 'port_stats '
+        if self.capabilities & ofproto_v1_0.OFPC_STP:
+            ret += 'stp '
+        if self.capabilities & ofproto_v1_0.OFPC_RESERVED:
+            ret += 'reserved '
+        if self.capabilities & ofproto_v1_0.OFPC_IP_REASM:
+            ret += 'ip_reasm '
+        if self.capabilities & ofproto_v1_0.OFPC_QUEUE_STATS:
+            ret += 'queue_stats '
+        if self.capabilities & ofproto_v1_0.OFPC_ARP_MATCH_IP:
+            ret += 'arp_match_ip '
+
+        return ret[:-1]
+
+    def actions_str(self):
+        ret = ''
+
+        if self.actions & (1 << ofproto_v1_0.OFPAT_OUTPUT):
+            ret += "output "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_VLAN_VID):
+            ret += "set_vlan_vid "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_VLAN_PCP):
+            ret += "set_vlan_pcp "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_STRIP_VLAN):
+            ret += "strip_vlan "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_DL_SRC):
+            ret += "set_dl_src "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_DL_DST):
+            ret += "set_dl_dst "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_NW_SRC):
+            ret += "set_nw_src "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_NW_DST):
+            ret += "set_nw_dst "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_NW_TOS):
+            ret += "set_nw_tos "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_TP_SRC):
+            ret += "set_tp_src "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_SET_TP_DST):
+            ret += "set_tp_dst "
+        if self.actions & (1 << ofproto_v1_0.OFPAT_ENQUEUE):
+            ret += "enqueue "
+
+        return ret[:-1]
 
 
 @_register_parser
@@ -1114,10 +1216,13 @@ class OFPPacketOut(MsgBase):
 
 @_set_msg_type(ofproto_v1_0.OFPT_FLOW_MOD)
 class OFPFlowMod(MsgBase):
-    def __init__(self, datapath, match=None, cookie=None,
-                 command=None, idle_timeout=None, hard_timeout=None,
-                 priority=None, buffer_id=None, out_port=None,
-                 flags=None, actions=None):
+    def __init__(self, datapath, match, cookie, command,
+                 idle_timeout=0, hard_timeout=0,
+                 priority=ofproto_v1_0.OFP_DEFAULT_PRIORITY,
+                 buffer_id=0xffffffff, out_port=ofproto_v1_0.OFPP_NONE,
+                 flags=0, actions=None):
+        if actions is None:
+            actions = []
         super(OFPFlowMod, self).__init__(datapath)
         self.match = match
         self.cookie = cookie
