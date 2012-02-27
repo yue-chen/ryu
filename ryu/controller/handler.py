@@ -17,7 +17,9 @@ import copy
 import inspect
 import logging
 
+from ryu.controller.switch_features import SwitchFeatures
 from ryu.controller import dispatcher
+from ryu.controller import event
 from ryu.controller import ofp_event
 
 LOG = logging.getLogger('ryu.controller.handler')
@@ -26,12 +28,32 @@ QUEUE_NAME_OFP_MSG = 'ofp_msg'
 DISPATCHER_NAME_OFP_HANDSHAKE = 'ofp_handshake'
 HANDSHAKE_DISPATCHER = dispatcher.EventDispatcher(
     DISPATCHER_NAME_OFP_HANDSHAKE)
-DISPATCHER_NAME_OFP_CONFIG = 'ofp_config'
-CONFIG_DISPATCHER = dispatcher.EventDispatcher(DISPATCHER_NAME_OFP_CONFIG)
+DISPATCHER_NAME_OFP_SWITCH_FEATURES = 'ofp_switch_features'
+SWITCH_FEATURES_DISPATCHER = dispatcher.EventDispatcher(
+    DISPATCHER_NAME_OFP_SWITCH_FEATURES)
+DISPATCHER_NAME_OFP_DESC = 'ofp_desc'
+DESC_DISPATCHER = dispatcher.EventDispatcher(DISPATCHER_NAME_OFP_DESC)
+DISPATCHER_NAME_OFP_CONFIG_HOOK = 'ofp_config_hook'
+CONFIG_HOOK_DISPATCHER = dispatcher.EventDispatcher(
+    DISPATCHER_NAME_OFP_CONFIG_HOOK)
+DISPATCHER_NAME_BARRIER_REQUEST = 'ofp_barrier_request'
+BARRIER_REQUEST_DISPATCHER = dispatcher.EventDispatcher(
+    DISPATCHER_NAME_BARRIER_REQUEST)
+DISPATCHER_NAME_OFP_BARRIER_REPLY = 'ofp_barrier_reply'
+BARRIER_REPLY_DISPATCHER = dispatcher.EventDispatcher(
+    DISPATCHER_NAME_OFP_BARRIER_REPLY)
 DISPATCHER_NAME_OFP_MAIN = 'ofp_main'
 MAIN_DISPATCHER = dispatcher.EventDispatcher(DISPATCHER_NAME_OFP_MAIN)
 DISPATCHER_NAME_OFP_DEAD = 'ofp_dead'
 DEAD_DISPATCHER = dispatcher.EventDispatcher(DISPATCHER_NAME_OFP_DEAD)
+
+ALL_HANDLERS = [HANDSHAKE_DISPATCHER,
+                SWITCH_FEATURES_DISPATCHER,
+                DESC_DISPATCHER,
+                CONFIG_HOOK_DISPATCHER,
+                BARRIER_REQUEST_DISPATCHER,
+                BARRIER_REPLY_DISPATCHER,
+                MAIN_DISPATCHER]
 
 
 def set_ev_cls(ev_cls, dispatchers=None):
@@ -67,21 +89,25 @@ def _get_hnd_spec_dispatchers(handler, dispatchers):
     return _dispatchers
 
 
-def register_cls(dispatchers=None):
+def register_cls_object(cls, dispatchers=None):
     dispatchers = _listify(dispatchers)
+    for _key, func in inspect.getmembers(cls, inspect.isfunction):
+        # LOG.debug('cls %s k %s func %s', cls, _key, func)
+        if not _is_ev_handler(func):
+            continue
+
+        dispatchers = _get_hnd_spec_dispatchers(func, dispatchers)
+        # LOG.debug("dispatchers %s", dispatchers)
+        for disp in dispatchers:
+            # LOG.debug('register dispatcher %s ev %s cls %s k %s func %s',
+            #           disp.name, func.ev_cls, cls, k, func)
+            disp.register_handler(func.ev_cls, func)
+
+
+def register_cls(dispatchers=None):
 
     def _register_cls_method(cls):
-        for _k, f in inspect.getmembers(cls, inspect.isfunction):
-            # LOG.debug('cls %s k %s f %s', cls, _k, f)
-            if not _is_ev_handler(f):
-                continue
-
-            _dispatchers = _get_hnd_spec_dispatchers(f, dispatchers)
-            # LOG.debug("_dispatchers %s", _dispatchers)
-            for d in _dispatchers:
-                # LOG.debug('register dispatcher %s ev %s cls %s k %s f %s',
-                #          d.name, f.ev_cls, cls, k, f)
-                d.register_handler(f.ev_cls, f)
+        register_cls_object(cls, dispatchers)
         return cls
 
     return _register_cls_method
@@ -103,7 +129,7 @@ def register_instance(i, dispatchers=None):
             d.register_handler(m.ev_cls, m)
 
 
-@register_cls([HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
+@register_cls(ALL_HANDLERS)
 class EchoHandler(object):
     @staticmethod
     @set_ev_cls(ofp_event.EventOFPEchoRequest)
@@ -125,7 +151,7 @@ class EchoHandler(object):
         pass
 
 
-@register_cls([HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
+@register_cls(ALL_HANDLERS)
 class ErrorMsgHandler(object):
     @staticmethod
     @set_ev_cls(ofp_event.EventOFPErrorMsg)
@@ -166,13 +192,13 @@ class HandShakeHandler(object):
         features_reqeust = datapath.ofproto_parser.OFPFeaturesRequest(datapath)
         datapath.send_msg(features_reqeust)
 
-        # now move on to config state
-        LOG.debug('move onto config mode')
-        datapath.ev_q.set_dispatcher(CONFIG_DISPATCHER)
+        # now move on to switch feature state
+        LOG.debug('move onto switch feature mode')
+        datapath.ev_q.set_dispatcher(SWITCH_FEATURES_DISPATCHER)
 
 
-@register_cls(CONFIG_DISPATCHER)
-class ConfigHandler(object):
+@register_cls(SWITCH_FEATURES_DISPATCHER)
+class SwitchFeaturesHandler(object):
     @staticmethod
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures)
     def switch_features_handler(ev):
@@ -182,57 +208,85 @@ class ConfigHandler(object):
 
         datapath.id = msg.datapath_id
         datapath.ports = msg.ports
+        datapath.features = SwitchFeatures(msg)
 
-        ofproto = datapath.ofproto
-        ofproto_parser = datapath.ofproto_parser
-        set_config = ofproto_parser.OFPSetConfig(
-            datapath, ofproto.OFPC_FRAG_NORMAL,
-            128  # TODO:XXX
-            )
-        datapath.send_msg(set_config)
+        # send desc stats request to get description of the switch,
+        # then know the switch vendor
+        desc_stats_request = datapath.ofproto_parser.OFPDescStatsRequest(
+            datapath, 0)
+        datapath.send_msg(desc_stats_request)
 
-        #
-        # drop all flows in order to put datapath into unknown state
-        #
-        datapath.send_delete_all_flows()
+        LOG.debug('move onto desc mode')
+        datapath.ev_q.set_dispatcher(DESC_DISPATCHER)
 
+
+@register_cls(DESC_DISPATCHER)
+class DescHandler(object):
+    @staticmethod
+    @set_ev_cls(ofp_event.EventOFPDescStatsReply)
+    def desc_stats_reply_handler(ev):
+        msg = ev.msg
+        datapath = msg.datapath
+        ev_q = datapath.ev_q
+        LOG.debug('move onto config mode')
+        ev_q.set_dispatcher(CONFIG_HOOK_DISPATCHER)
+        ev_q.queue(event.EventMsg(str(DescHandler), None,
+                                  (datapath, msg.body)))
+
+
+@register_cls(CONFIG_HOOK_DISPATCHER)
+class ConfigHookHandler(object):
+    @staticmethod
+    @set_ev_cls(event.EventMsg)
+    def message_handler(ev):
+        datapath, _desc = ev.data
+        ev_q = datapath.ev_q
+
+        LOG.debug('move onto barrier request mode')
+        ev_q.set_dispatcher(BARRIER_REQUEST_DISPATCHER)
+        ev_q.queue(event.EventMsg(str(ConfigHookHandler), None, ev.data))
+
+
+@register_cls(BARRIER_REQUEST_DISPATCHER)
+class BarrierRequestHandler(object):
+    @staticmethod
+    @set_ev_cls(event.EventMsg)
+    def message_handler(ev):
+        datapath, _desc = ev.data
+
+        # to wait for messages sent by CONFIG_HOOK_DISPATCHER to be processed
+        LOG.debug('move onto barrier reply mode')
+        datapath.ev_q.set_dispatcher(BARRIER_REPLY_DISPATCHER)
         datapath.send_barrier()
 
-        # We had better to move on to the main state after getting the
-        # response of the barrier since it guarantees that the switch
-        # is in the known state (all the flows were removed). However,
-        # cbench doesn't work because it ignores the barrier. Also,
-        # the above "known" state doesn't always work (for example,
-        # the secondary controller should not remove all the flows in
-        # the case of HA configuration). Let's move on to the main
-        # state here for now. I guess that we need API to enable
-        # applications to initialize switches in their own ways.
 
-        LOG.debug('move onto main mode')
-        ev.msg.datapath.ev_q.set_dispatcher(MAIN_DISPATCHER)
-
-    # The above OFPC_DELETE request may trigger flow removed ofp_event.
-    # Just ignore them.
-    @staticmethod
-    @set_ev_cls(ofp_event.EventOFPFlowRemoved)
-    def flow_removed_handler(ev):
-        LOG.debug("flow removed ev %s msg %s", ev, ev.msg)
-
+@register_cls(BARRIER_REPLY_DISPATCHER)
+class BarrierReplyHandler(object):
     @staticmethod
     @set_ev_cls(ofp_event.EventOFPBarrierReply)
     def barrier_reply_handler(ev):
-        LOG.debug('barrier reply ev %s msg %s', ev, ev.msg)
+        LOG.debug('move onto main mode')
+        ev.msg.datapath.ev_q.set_dispatcher(MAIN_DISPATCHER)
 
 
 @register_cls(MAIN_DISPATCHER)
 class MainHandler(object):
     @staticmethod
-    @set_ev_cls(ofp_event.EventOFPFlowRemoved)
-    def flow_removed_handler(ev):
-        pass
-
-    @staticmethod
     @set_ev_cls(ofp_event.EventOFPPortStatus)
     def port_status_handler(ev):
         msg = ev.msg
         LOG.debug('port status %s', msg.reason)
+
+        msg = ev.msg
+        reason = msg.reason
+        port = msg.desc
+        datapath = msg.datapath
+        ofproto = datapath.ofproto
+
+        if reason == ofproto.OFPPR_ADD:
+            datapath.ports[port.port_no] = port
+        elif reason == ofproto.OFPPR_DELETE:
+            del datapath.ports[port.port_no]
+        else:
+            assert reason == ofproto.OFPPR_MODIFY
+            datapath.ports[port.port_no] = port

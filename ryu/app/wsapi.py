@@ -20,6 +20,7 @@ import gflags
 import logging
 import re
 import textwrap
+import traceback
 import simplejson
 from copy import copy
 from gevent.pywsgi import WSGIServer
@@ -265,6 +266,7 @@ class WSPathTraversal:
         except Exception, e:
             LOG.error("caught unhandled exception with path '%s' : %s" % \
                       (str(self._request.postpath), e))
+            traceback.print_exc()
             internalError(self._request, "Unhandled server error")
 
     def _error_wrapper(self, l):
@@ -358,7 +360,7 @@ class WSPathExtractResult:
         self.error = error
 
 
-class WSPathComponent:
+class WSPathComponent(object):
     """Base class for WS path component extractors"""
 
     def __init__(self):
@@ -366,7 +368,7 @@ class WSPathComponent:
 
         Currently this does nothing but that may change in the future.
         Subclasses should call this to be sure."""
-        pass
+        super(WSPathComponent, self).__init__()
 
     def __str__(self):
         """Get the string representation of the path component
@@ -483,8 +485,8 @@ class WSPathArbitraryString(WSPathComponent):
         WSPathComponent.__init__(self)
         self._name = name
 
-        def __str__(self):
-            return self._name
+    def __str__(self):
+        return self._name
 
     def extract(self, pc, data):
         if pc == None:
