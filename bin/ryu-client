@@ -43,7 +43,11 @@ def client_test():
         'create_port': lambda a: client.create_port(a[1], a[2], a[3]),
         'update_port': lambda a: client.update_port(a[1], a[2], a[3]),
         'delete_port': lambda a: client.delete_port(a[1], a[2], a[3])
-        }
+        'list_macs': lambda a: sys.stdout.write(
+            ofp_client.list_macs(a[1], a[2], a[3])),
+        'create_mac': lambda a: ofp_client.create_mac(a[1], a[2], a[3], a[4]),
+        'update_mac': lambda a: ofp_client.update_mac(a[1], a[2], a[3], a[4]),
+    }
 
     # allow '-', instead of '_'
     commands.update(dict([(k.replace('_', '-'), v)
