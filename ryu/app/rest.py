@@ -15,13 +15,16 @@
 # limitations under the License.
 
 import json
-from webob import Request, Response
+from webob import Response
 
+from ryu.app.wsgi import ControllerBase, WSGIApplication
 from ryu.base import app_manager
 from ryu.controller import network
 from ryu.exception import NetworkNotFound, NetworkAlreadyExist
 from ryu.exception import PortNotFound, PortAlreadyExist
-from ryu.app.wsgi import ControllerBase, WSGIApplication
+from ryu.exception import MacAddressAlreadyExist
+from ryu.lib import mac as mac_lib
+
 
 ## TODO:XXX
 ## define db interface and store those information into db
@@ -56,13 +59,23 @@ from ryu.app.wsgi import ControllerBase, WSGIApplication
 #
 # remove a set of dpid and port
 # DELETE /v1.0/networks/{network-id}/{dpid}_{port-id}
-
-# We store networks and ports like the following:
 #
-# {network_id: [(dpid, port), ...
-# {3: [(3,4), (4,7)], 5: [(3,6)], 1: [(5,6), (4,5), (4, 10)]}
+# get the list of mac addresses of dpid and port
+# GET /v1.0/networks/{network-id}/{dpid}_{port-id}/macs/
 #
-
+# register a new mac address for dpid and port
+# Fail if mac address is already registered or the mac address is used
+# for other ports of the same network-id
+# POST /v1.0/networks/{network-id}/{dpid}_{port-id}/macs/{mac}
+#
+# update a new mac address for dpid and port
+# Success as nop even if same mac address is already registered.
+# For now, changing mac address is not allows as it fails.
+# PUT /v1.0/networks/{network-id}/{dpid}_{port-id}/macs/{mac}
+#
+# For now DELETE /v1.0/networks/{network-id}/{dpid}_{port-id}/macs/{mac}
+# is not supported. mac address is released when port is deleted.
+#
 
 class NetworkController(ControllerBase):
     def __init__(self, req, link, data, **config):
@@ -134,11 +147,46 @@ class PortController(ControllerBase):
         return Response(status=200)
 
 
+class MacController(ControllerBase):
+    def __init__(self, req, link, data, **config):
+        super(MacController, self).__init__(req, link, data, **config)
+        self.nw = data
+
+    def create(self, _req, network_id, dpid, port_id, mac_addr, **_kwargs):
+        mac = mac_lib.haddr_to_bin(mac_addr)
+        try:
+            self.nw.create_mac(network_id, int(dpid, 16), int(port_id), mac)
+        except PortNotFound:
+            return Response(status=404)
+        except MacAddressAlreadyExist:
+            return Response(status=409)
+
+        return Response(status=200)
+
+    def update(self, _req, network_id, dpid, port_id, mac_addr, **_kwargs):
+        mac = mac_lib.haddr_to_bin(mac_addr)
+        try:
+            self.nw.update_mac(network_id, int(dpid, 16), int(port_id), mac)
+        except PortNotFound:
+            return Response(status=404)
+
+        return Response(status=200)
+
+    def lists(self, _req, network_id, dpid, port_id, **_kwargs):
+        try:
+            body = json.dumps([mac_lib.haddr_to_str(mac_addr) for mac_addr in
+                               self.nw.list_mac(int(dpid, 16), int(port_id))])
+        except PortNotFound:
+            return Response(status=404)
+
+        return Response(content_type='application/json', body=body)
+
+
 class restapi(app_manager.RyuApp):
     _CONTEXTS = {
         'network': network.Network,
         'wsgi': WSGIApplication
-        }
+    }
 
     def __init__(self, *args, **kwargs):
         super(restapi, self).__init__(*args, **kwargs)
@@ -181,3 +229,18 @@ class restapi(app_manager.RyuApp):
         mapper.connect('ports', uri,
                        controller=PortController, action='delete',
                        conditions=dict(method=['DELETE']))
+
+        wsgi.registory['MacController'] = self.nw
+        uri += '/macs'
+        mapper.connect('macs', uri,
+                       controller=MacController, action='lists',
+                       conditions=dict(method=['GET']))
+
+        uri += '/{mac_addr}'
+        mapper.connect('macs', uri,
+                       controller=MacController, action='create',
+                       conditions=dict(method=['POST']))
+
+        mapper.connect('macs', uri,
+                       controller=MacController, action='update',
+                       conditions=dict(method=['PUT']))
