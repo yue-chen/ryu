@@ -14,19 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Internal representation of datapath id is quad int
-# string representation is in hex without '0x'
-
-_DPID_LEN = 16
-_DPID_LEN_STR = str(_DPID_LEN)
-_DPID_FMT = '%0' + _DPID_LEN_STR + 'x'
-DPID_PATTERN = r'[0-9a-f]{%d}' % _DPID_LEN
-
-
-def dpid_to_str(dpid):
-    return _DPID_FMT % dpid
-
-
-def str_to_dpid(dpid_str):
-    assert len(dpid_str) == _DPID_LEN
-    return int(dpid_str, 16)
+HEX_PATTERN = r'0x[0-9a-z]+'
+DIGIT_PATTERN = r'[1-9][0-9]*'
