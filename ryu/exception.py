@@ -79,3 +79,6 @@ class TunnelKeyAlreadyExist(RyuException):
 
 class TunnelKeyNotFound(RyuException):
     message = 'no tunnel key for network %(network_id)s'
+
+class OVSBridgeNotFound(RyuException):
+    message = 'no bridge for datapath_id %(datapath_id)s'
