@@ -18,21 +18,36 @@
 import inspect
 import logging
 import os
+import os.path
 import sys
 
 LOG = logging.getLogger('ryu.utils')
 
 
+def _import(modname):
+    if modname.endswith('.py'):
+        modname = modname[:-3]
+    __import__(modname)
+    return sys.modules[modname]
+
+
 def import_module(modname):
     try:
         __import__(modname)
-    except:
-        sys.path.append(os.path.dirname(os.path.abspath(modname)))
+    except ImportError:
+        modname = os.path.normpath(modname)
+        if not os.path.isabs(modname):
+            name = modname.replace(os.sep, '.')
+            try:
+                return _import(name)
+            except ImportError:
+                pass
+
+        dirname = os.path.dirname(modname)
         name = os.path.basename(modname)
-        if name.endswith('.py'):
-            name = name[:-3]
-        __import__(name)
-        return sys.modules[name]
+        if dirname not in sys.path:
+            sys.path.append(dirname)
+        return _import(name)
     return sys.modules[modname]
 
 
