@@ -33,6 +33,9 @@ from ryu.app import wsgi
 from ryu.base.app_manager import AppManager
 from ryu.controller import controller
 
+# for gflags
+import ryu.app.quantum_adapter
+
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_bool('version', False, 'output version information and exit')
@@ -53,7 +56,6 @@ def main():
 
     # always enable ofp for now.
     FLAGS.app_lists += ['ryu.controller.ofp_handler']
-
     if len(args) > 1:
         FLAGS.app_lists += args[1:]
 
