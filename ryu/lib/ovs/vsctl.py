@@ -24,8 +24,8 @@ import sys
 import weakref
 
 import ovs.db.data
-import ovs.poller
 import ovs.db.types
+import ovs.poller
 from ovs import (jsonrpc,
                  ovsuuid,
                  stream)
