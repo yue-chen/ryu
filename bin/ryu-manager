@@ -40,6 +40,7 @@ from ryu.controller import controller
 import ryu.contrib
 
 # for gflags
+import ryu.flags
 import ryu.app.quantum_adapter
 
 

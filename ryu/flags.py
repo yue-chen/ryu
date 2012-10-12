@@ -23,3 +23,21 @@ FLAGS = gflags.FLAGS
 
 # GLOBAL flags
 gflags.DEFINE_boolean('monkey_patch', False, 'do monkey patch')
+
+# ryu.contrib.ovs.dirs
+# TODO: once ryu.contrib.ovs is removed, eliminate those.
+gflags.DEFINE_string('ovs_pkgdatadir', '/usr/share/openvswitch',
+                     'openvswitch package direcotry. can be overrided '
+                     'by the environment variable, OVS_PKGDATADIR')
+gflags.DEFINE_string('ovs_rundir', '/var/run/openvswitch',
+                     'openvswitch runtime directory. can be overrided '
+                     'by the environment variable, OVS_RUNDIR')
+gflags.DEFINE_string('ovs_logdir', '/var/log/openvswitch',
+                     'openvswitch log direcotry can be overrided '
+                     'by the environment variable, OVS_LOGDIR')
+gflags.DEFINE_string('ovs_bindir', '/usr/bin',
+                     'openvswitch binary directory, can be overrided '
+                     'by the environment variable, OVS_BINDIR')
+gflags.DEFINE_string('ovs_dbdir', '/etc/openvswitch',
+                     'openvswitch db directory, can be overrided '
+                     'by the environment variable, OVS_SYSCONFDIR or OVS_DBDIR')
