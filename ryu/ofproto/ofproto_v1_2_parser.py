@@ -2006,75 +2006,56 @@ class OFPMatchField(object):
         return self.header & 0xff
 
 
-@OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IN_PORT])
-class MTInPort(OFPMatchField):
-    pack_str = '!I'
-
+class OFPMatchFieldValue(OFPMatchField):
     def __init__(self, header, value, mask=None):
-        super(MTInPort, self).__init__(header)
+        super(OFPMatchFieldValue, self).__init__(header)
         self.value = value
+
+
+class OFPMatchFieldValueMask(OFPMatchField):
+    def __init__(self, header, value, mask=None):
+        super(OFPMatchFieldValueMask, self).__init__(header)
+        self.value = value
+        self.mask = mask
+
+
+@OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IN_PORT])
+class MTInPort(OFPMatchFieldValue):
+    pack_str = '!I'
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_METADATA,
                                       ofproto_v1_2.OXM_OF_METADATA_W])
-class MTMetadata(OFPMatchField):
+class MTMetadata(OFPMatchFieldValueMask):
     pack_str = '!Q'
-
-    def __init__(self, header, value, mask=None):
-        super(MTMetadata, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IN_PHY_PORT])
-class MTInPhyPort(OFPMatchField):
+class MTInPhyPort(OFPMatchFieldValue):
     pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTInPhyPort, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ETH_DST,
                                       ofproto_v1_2.OXM_OF_ETH_DST_W])
-class MTEthDst(OFPMatchField):
+class MTEthDst(OFPMatchFieldValueMask):
     pack_str = '!6s'
-
-    def __init__(self, header, value, mask=None):
-        super(MTEthDst, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ETH_SRC,
                                       ofproto_v1_2.OXM_OF_ETH_SRC_W])
-class MTEthSrc(OFPMatchField):
+class MTEthSrc(OFPMatchFieldValueMask):
     pack_str = '!6s'
-
-    def __init__(self, header, value, mask=None):
-        super(MTEthSrc, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ETH_TYPE])
-class MTEthType(OFPMatchField):
+class MTEthType(OFPMatchFieldValue):
     pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTEthType, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_VLAN_VID,
                                       ofproto_v1_2.OXM_OF_VLAN_VID_W])
-class MTVlanVid(OFPMatchField):
+class MTVlanVid(OFPMatchFieldValueMask):
     pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTVlanVid, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
     @classmethod
     def field_parser(cls, header, buf, offset):
@@ -2088,189 +2069,107 @@ class MTVlanVid(OFPMatchField):
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_VLAN_PCP])
-class MTVlanPcp(OFPMatchField):
+class MTVlanPcp(OFPMatchFieldValue):
     pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTVlanPcp, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IP_DSCP])
-class MTIPDscp(OFPMatchField):
+class MTIPDscp(OFPMatchFieldValue):
     pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPDscp, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IP_ECN])
-class MTIPECN(OFPMatchField):
+class MTIPECN(OFPMatchFieldValue):
     pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPECN, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IP_PROTO])
-class MTIPProto(OFPMatchField):
+class MTIPProto(OFPMatchFieldValue):
     pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPProto, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IPV4_SRC,
                                       ofproto_v1_2.OXM_OF_IPV4_SRC_W])
-class MTIPV4Src(OFPMatchField):
+class MTIPV4Src(OFPMatchFieldValueMask):
     pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPV4Src, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IPV4_DST,
                                       ofproto_v1_2.OXM_OF_IPV4_DST_W])
-class MTIPV4Dst(OFPMatchField):
+class MTIPV4Dst(OFPMatchFieldValueMask):
     pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPV4Dst, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_TCP_SRC])
-class MTTCPSrc(OFPMatchField):
+class MTTCPSrc(OFPMatchFieldValue):
     pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTTCPSrc, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_TCP_DST])
-class MTTCPDst(OFPMatchField):
+class MTTCPDst(OFPMatchFieldValue):
     pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTTCPDst, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_UDP_SRC])
-class MTUDPSrc(OFPMatchField):
+class MTUDPSrc(OFPMatchFieldValue):
     pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTUDPSrc, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_UDP_DST])
-class MTUDPDst(OFPMatchField):
+class MTUDPDst(OFPMatchFieldValue):
     pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTUDPDst, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_SCTP_SRC])
-class MTSCTPSrc(OFPMatchField):
+class MTSCTPSrc(OFPMatchFieldValue):
     pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTSCTPSrc, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_SCTP_DST])
-class MTSCTPDst(OFPMatchField):
+class MTSCTPDst(OFPMatchFieldValue):
     pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTSCTPDst, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ICMPV4_TYPE])
-class MTICMPV4Type(OFPMatchField):
+class MTICMPV4Type(OFPMatchFieldValue):
     pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTICMPV4Type, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ICMPV4_CODE])
-class MTICMPV4Code(OFPMatchField):
+class MTICMPV4Code(OFPMatchFieldValue):
     pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTICMPV4Code, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ARP_OP])
-class MTArpOp(OFPMatchField):
+class MTArpOp(OFPMatchFieldValue):
     pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTArpOp, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ARP_SPA,
                                       ofproto_v1_2.OXM_OF_ARP_SPA_W])
-class MTArpSpa(OFPMatchField):
+class MTArpSpa(OFPMatchFieldValueMask):
     pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTArpSpa, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ARP_TPA,
                                       ofproto_v1_2.OXM_OF_ARP_TPA_W])
-class MTArpTpa(OFPMatchField):
+class MTArpTpa(OFPMatchFieldValueMask):
     pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTArpTpa, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ARP_SHA,
                                       ofproto_v1_2.OXM_OF_ARP_SHA_W])
-class MTArpSha(OFPMatchField):
+class MTArpSha(OFPMatchFieldValueMask):
     pack_str = '!6s'
-
-    def __init__(self, header, value, mask=None):
-        super(MTArpSha, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ARP_THA,
                                       ofproto_v1_2.OXM_OF_ARP_THA_W])
-class MTArpTha(OFPMatchField):
+class MTArpTha(OFPMatchFieldValueMask):
     pack_str = '!6s'
 
-    def __init__(self, header, value, mask=None):
-        super(MTArpTha, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
-
-class MTIPv6(object):
+class MTIPv6(OFPMatchField):
     @classmethod
     def field_parser(cls, header, buf, offset):
         hasmask = (header >> 8) & 1
@@ -2282,72 +2181,52 @@ class MTIPv6(object):
             value = struct.unpack_from(cls.pack_str, buf, offset + 4)
             return cls(header, list(value))
 
+
+class MTIPv6ValueMask(MTIPv6):
+    def __init__(self, header, value, mask=None):
+        super(MTIPv6ValueMask, self).__init__(header)
+        self.value = value
+        self.mask = mask
+
     def serialize(self, buf, offset):
         self.putv6(buf, offset, self.value, self.mask)
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IPV6_SRC,
                                       ofproto_v1_2.OXM_OF_IPV6_SRC_W])
-class MTIPv6Src(MTIPv6, OFPMatchField):
+class MTIPv6Src(MTIPv6ValueMask):
     pack_str = '!8H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6Src, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IPV6_DST,
                                       ofproto_v1_2.OXM_OF_IPV6_DST_W])
-class MTIPv6Dst(MTIPv6, OFPMatchField):
+class MTIPv6Dst(MTIPv6ValueMask):
     pack_str = '!8H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6Dst, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IPV6_FLABEL,
                                       ofproto_v1_2.OXM_OF_IPV6_FLABEL_W])
-class MTIPv6Flabel(OFPMatchField):
+class MTIPv6Flabel(OFPMatchFieldValueMask):
     pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6Flabel, self).__init__(header)
-        self.value = value
-        self.mask = mask
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_MPLS_LABEL])
-class MTMplsLabel(OFPMatchField):
+class MTMplsLabel(OFPMatchFieldValue):
     pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTMplsLabel, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ICMPV6_TYPE])
-class MTICMPV6Type(OFPMatchField):
+class MTICMPV6Type(OFPMatchFieldValue):
     pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTICMPV6Type, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_ICMPV6_CODE])
-class MTICMPV6Code(OFPMatchField):
+class MTICMPV6Code(OFPMatchFieldValue):
     pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTICMPV6Code, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IPV6_ND_TARGET])
-class MTIPv6NdTarget(MTIPv6, OFPMatchField):
+class MTIPv6NdTarget(MTIPv6):
     pack_str = '!8H'
 
     def __init__(self, header, value, mask=None):
@@ -2359,27 +2238,15 @@ class MTIPv6NdTarget(MTIPv6, OFPMatchField):
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IPV6_ND_SLL])
-class MTIPv6NdSll(OFPMatchField):
+class MTIPv6NdSll(OFPMatchFieldValue):
     pack_str = '!6s'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6NdSll, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_IPV6_ND_TLL])
-class MTIPv6NdTll(OFPMatchField):
+class MTIPv6NdTll(OFPMatchFieldValue):
     pack_str = '!6s'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6NdTll, self).__init__(header)
-        self.value = value
 
 
 @OFPMatchField.register_field_header([ofproto_v1_2.OXM_OF_MPLS_TC])
-class MTMplsTc(OFPMatchField):
+class MTMplsTc(OFPMatchFieldValue):
     pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTMplsTc, self).__init__(header)
-        self.value = value
