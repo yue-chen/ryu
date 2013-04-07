@@ -56,8 +56,11 @@ class RyuApp(object):
         """
         return cls._CONTEXTS.iteritems()
 
-    def __init__(self, *_args, **_kwargs):
+    def __init__(self, *args, **kwargs):
         super(RyuApp, self).__init__()
+        self._args = args
+        self._kwargs = kwargs
+
         self.name = self.__class__.__name__
         self.event_handlers = {}
         self.observers = {}
