@@ -82,7 +82,7 @@ class SimpleVLAN(app_manager.RyuApp):
     def _queue_port_flow_del(self, dp, port_no):
         self._port_flow_del(dp, port_no)
 
-    @handler.set_ev_cls(dpset.EventDP)
+    @handler.set_ev_cls(dpset.EventDP, network.NETWORK_TENANT_EV_DISPATCHER)
     def dp_handler(self, ev):
         if not ev.enter:
             return
@@ -177,12 +177,12 @@ class SimpleVLAN(app_manager.RyuApp):
             self.logger.debug('_port_setup_netid failed')
             self._queue_port_flow_del(dp, port_no)
 
-    @handler.set_ev_cls(dpset.EventPortAdd)
+    @handler.set_ev_cls(dpset.EventPortAdd, network.NETWORK_TENANT_EV_DISPATCHER)
     def port_add_handler(self, ev):
         self.logger.debug('port_add %s', ev)
         self._port_add(ev.dp, ev.port.port_no)
 
-    @handler.set_ev_cls(dpset.EventPortDelete)
+    @handler.set_ev_cls(dpset.EventPortDelete, network.NETWORK_TENANT_EV_DISPATCHER)
     def port_del_handler(self, ev):
         self.logger.debug('port_del %s', ev)
         dp = ev.dp
@@ -191,14 +191,14 @@ class SimpleVLAN(app_manager.RyuApp):
             return
         self._queue_port_flow_del(dp, port_no)
 
-    @handler.set_ev_cls(network.EventNetworkPort)
+    @handler.set_ev_cls(network.EventNetworkPort, network.NETWORK_TENANT_EV_DISPATCHER)
     def network_port_handler(self, ev):
         self.logger.debug('network_port %s', ev)
         if not ev.add_del:
             return
         self._port_setup_netid(ev.dpid, ev.port_no, ev.network_id)
 
-    @handler.set_ev_cls(tunnels.EventTunnelKeyAdd)
+    @handler.set_ev_cls(tunnels.EventTunnelKeyAdd, network.NETWORK_TENANT_EV_DISPATCHER)
     def tunnel_key_add_handler(self, ev):
         self.logger.debug('tunnel_add %s', ev)
         tunnel_key = ev.tunnel_key
@@ -208,7 +208,7 @@ class SimpleVLAN(app_manager.RyuApp):
                 continue
             self._port_setup(dp, port_no, tunnel_key)
 
-    @handler.set_ev_cls(conf_switch.EventConfSwitchSet)
+    @handler.set_ev_cls(conf_switch.EventConfSwitchSet, network.NETWORK_TENANT_EV_DISPATCHER)
     def conf_switch_set_handler(self, ev):
         self.logger.debug('conf_switch_set %s', ev)
         if ev.key != conf_switch_key.OVSDB_ADDR:
